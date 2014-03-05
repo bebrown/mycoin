@@ -9,7 +9,15 @@ difficult for the beginner to comprehend.
 Mycoin (for lack of a better name) is an attempt to create a set of Python functions
 to simulate the Bitcoin protocol.
 
-# Features
+# (Planned) Features
+
+* Purely functional.
+* Inputs and ouputs are human-readable: tuples, lists, ints, and byte strings.
+* Uses MD5 rather than SHA256 because the hash size is smaller and therefore easier to visually inspect. Libraries include wrappers for MD5 that allow the hash size to be reduced further.
 
 # Limitations
 
+* No peer-to-peer networking. Use some other broadcast mechanism, such as an email list.
+* No blocks. Miners solve individual transactions. The blockchain is therefore just a list of transactions.
+* Client is just the IDLE shell. No support for wallet-like functionality, such as maintaining a list of private keys. Therefore...
+* Only explicit support for one public/private key per user. Should be sufficient for a simulation.
