@@ -21,6 +21,7 @@ to simulate the Bitcoin protocol.
 * No blocks. Miners solve individual transactions. The blockchain is therefore just a list of transactions.
 * Client is just the IDLE shell. No support for wallet-like functionality, such as maintaining a list of private keys. Therefore...
 * Only explicit support for one public/private key per user. Should be sufficient for a simulation.
+* User addresses are encoded in base-58 (like Bitcoin addresses), but don't include a checksum. This keeps them relatively short.
 
 # Sample Usage
 
