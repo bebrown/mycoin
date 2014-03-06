@@ -224,11 +224,25 @@ def decrypt_str(bstr, key):
 # Return encrypted hash of data.
 # Data is assumed to be a byte string (ie, already encoded).
 # Key is an encoded key (int).
-def sign(data, key):
-    """Return an encrypted hash of data using a key"""
+def make_signature(data, key):
+    """Generate an encrypted hash of data using a key"""
     md5str = md5(data, 16)
     signature = encrypt_str(md5str, key)
     return signature
+
+def sign(data, key):
+    """Append a signature to data"""
+    return serialize([data, make_signature(data, key)])
+
+def verify_signature(signed_message, key):
+    data = deserialize(signed_message)
+    if len(data) != 2:
+        return False
+    message = data[0]
+    signature = data[1]
+    sig_hash = decrypt_str(signature, key)
+    msg_hash = md5(message, 16)
+    return sig_hash == msg_hash
 
 def my_address(pub_key):
     """Calculate the address from the public key"""
