@@ -19,9 +19,12 @@ import os
 
 # os.urandom(4)
 
+from math import ceil
+
 # Convert an integer to a byte string
 def int2bstr(num):
-    return num.to_bytes((num.bit_length()-1) // 8 + 1, byteorder='big')
+    length = max((num.bit_length()-1) // 8 + 1, 1)
+    return num.to_bytes(length, byteorder='big')
 
 # Convert a byte string to an integer
 def bstr2int(bstr):
@@ -96,6 +99,39 @@ def solve(block, difficulty, limit=2**32, bytes=16):
     else:
         return (0,0)
 
+# Each item can be up to 65535 bytes in length.
+# Will truncate data silently.
+def serialize(arr):
+    """Serialize an array of byte strings"""
+    
+    out_str = b''
+    
+    for item in arr:
+        if type(item) is str:
+            item = item.encode()
+        length = min(len(item), 65535)
+        item = item[0:length]
+        header = int2bstr(length).rjust(2, b'\x00')
+        out_str = out_str + header + item
+
+    return out_str
+
+def deserialize(bstr):
+    """Return an array of byte strings from a serialized string"""
+    if len(bstr) < 2:
+        return []
+
+    arr = []
+    
+    i = 0
+    while i < len(bstr):
+        length = bstr2int(bstr[i:i+2])
+        data = bstr[i+2:i+2+length]
+        arr += [data]
+        i = i + 2 + length
+
+    return arr
+
 # Decode a key, assumed to be an int.
 # Returns (e, n)
 def key_decode(key):
@@ -118,7 +154,11 @@ def key_encode(e, n):
     e_str_len = int2bstr(len(e_str))
     return bstr2int(e_str_len + e_str + n_str)
 
+
+# The modulus of the key is assumed to be larger than the data to be
+# encrypted.
 def encrypt(data, key):
+    """Encrypt a blob of data using a key."""
     if type(key) is tuple:
         (e, n) = key
         return pow(data, e, n)
@@ -126,21 +166,69 @@ def encrypt(data, key):
         (e, n) = key_decode(key)
         return pow(data, e, n)
 
-def encryptstr(str, key):
-    if type(key) is tuple:
-        (e, n) = key
-        return [encrypt(c, e, n) for c in str]
-    elif type(key) is int:
+def encrypt_str(str, key):
+    """Encrypt a string using a key"""
+    # Extract key parts
+    if type(key) is int:
         (e, n) = key_decode(key)
-        return [encrypt(c, e, n) for c in str]
+    elif type(key) is tuple:
+        (e, n) = key
+
+    # Encode str into a byte string, if necessary
+    if type(str) is str:
+        str = str.encode()
+        
+    # Calculate input chunk size, rounded down to nearest 8 bits
+    in_chunk_size = n.bit_length() // 8
+
+    # Calculate output chunk size, rounded up to nearest 8 bits
+    out_chunk_size = n.bit_length() // 8 + 1
+
+    # Put together the header
+    last_chunk_size = len(str) % in_chunk_size
+    header = b'\x04' + int2bstr(in_chunk_size) + \
+             int2bstr(out_chunk_size) + int2bstr(last_chunk_size)
+
+    # Start the output string
+    out_str = b''
+
+    # Encrypt each chunk, appending to out_str
+    for i in range(0, len(str), in_chunk_size):
+        in_chunk = str[i:i+in_chunk_size]
+        out_chunk = int2bstr(encrypt(bstr2int(in_chunk), key))
+        out_str = out_str + out_chunk.rjust(out_chunk_size, b'\x00')
+    
+    return header + out_str
+
+def decrypt_str(bstr, key):
+    """Decrypt an encrypted byte string using a key"""
+    # Extract header parts
+    data_start = bstr[0]
+    out_chunk_size = bstr[1]
+    in_chunk_size = bstr[2]
+    last_chunk_size = bstr[3]
+
+    # Start the output string
+    out_str = b''
+
+    # Decrypt each chunk, appending to out_str
+    for i in range(data_start, len(bstr), in_chunk_size):
+        in_chunk = bstr[i:i+in_chunk_size]
+        out_chunk = int2bstr(encrypt(bstr2int(in_chunk), key))
+        if i + in_chunk_size < len(bstr):
+            out_str = out_str + out_chunk.rjust(out_chunk_size, b'\x00')
+        else:
+            out_str = out_str + out_chunk
+
+    return out_str
 
 # Return encrypted hash of data.
 # Data is assumed to be a byte string (ie, already encoded).
-# Key is an encoded key (int)
+# Key is an encoded key (int).
 def sign(data, key):
+    """Return an encrypted hash of data using a key"""
     md5str = md5(data, 16)
-    md5int = bstr2int(md5str)
-    signature = encrypt(md5int, key)
+    signature = encrypt_str(md5str, key)
     return signature
 
 def my_address(pub_key):
