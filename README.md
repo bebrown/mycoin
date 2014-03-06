@@ -77,3 +77,32 @@ Then decrypt it using the public key:
     >>> plaintext = encrypt(ciphertext, pub)
     >>> int2bstr(plaintext)
     b'Hi!'
+
+To encrypt a longer string, we have to break it up into chunks, encrypt each chunk separately, then concatenate
+the chunks together to form the encrypted string. The chunk size should be no larger than the number of bits needed to represent the modulus. For example, if our modulus is 34 bits, chunks should be shorter than 34 bits. The resulting encrypted value will be 34 bits long, though. This poses a small problem: in addition to the encrypted chunks, we'll need to send the receiver additional information about the chunk size so it can be decrypted correctly.
+
+Our encrypted string will include this additional information in a header.
+
+* Byte 0: How long the header is (in bytes)
+* Byte 1: The chunk size (in bytes)
+* Byte 2: The encrypted value size (in bytes)
+* Byte 3: The length of the final chunk (in bytes)
+
+The rest of the encrypted data follows.
+
+    >>> s = b'This is a test.'
+    >>> len(s)
+    15
+    >>> enc = encrypt_str(s, pub)
+    >>> enc
+    b'\x04\x04\x05\x03\x01 \xe7\xff\xbd\x00\xd5M\x85\xff\x00,\xb2\xcbU\x00\xaf\x8f\x85\xbb'
+    
+The header says there are 4 bytes in the header, the plaintext was broken up into 4-byte chunks,
+the ciphertext has 5-byte chunks, and the last plaintext chunk is 3 bytes long (because the length
+of the plaintext is not a multiple of 4).
+
+After encrypting, we can decrypt using decryptstr:
+
+    >>> decrypt_str(enc, priv)
+    b'This is a test.'
+
