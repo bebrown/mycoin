@@ -99,60 +99,59 @@ def solve(block, difficulty, limit=2**32, bytes=16):
     else:
         return (0,0)
 
-# Each item can be up to 65535 bytes in length.
-# Will truncate data silently.
 def serialize(arr):
     """Serialize an array of byte strings"""
+
+    # Determine length of longest item in arr
+    max_length = max([len(i) for i in arr])
+
+    # Number of bytes needed to represent the max length
+    length_bytes = max((max_length.bit_length()-1) // 8 + 1, 1)
     
-    out_str = b''
+    out_str = int2bstr(length_bytes)
     
     for item in arr:
         if type(item) is str:
             item = item.encode()
-        length = min(len(item), 65535)
-        item = item[0:length]
-        header = int2bstr(length).rjust(2, b'\x00')
-        out_str = out_str + header + item
+        item_length = int2bstr(len(item)).rjust(length_bytes, b'\x00')
+        out_str = out_str + item_length + item
 
     return out_str
 
 def deserialize(bstr):
     """Return an array of byte strings from a serialized string"""
-    if len(bstr) < 2:
+    if len(bstr) < 1:
         return []
 
     arr = []
+
+    length_bytes = bstr[0]
     
-    i = 0
+    i = 1
     while i < len(bstr):
-        length = bstr2int(bstr[i:i+2])
-        data = bstr[i+2:i+2+length]
+        length = bstr2int(bstr[i:i+length_bytes])
+        data = bstr[i+length_bytes:i+length_bytes+length]
         arr += [data]
-        i = i + 2 + length
+        i = i + length_bytes + length
 
     return arr
 
 # Decode a key, assumed to be an int.
 # Returns (e, n)
 def key_decode(key):
+    """Decode an encoded key"""
     bstr = int2bstr(key)
-    e_str_len = bstr[0]          # First byte contains the length of e
-    e_str = bstr[1:e_str_len+1]  # Get e out of the string
-    n_str = bstr[e_str_len+1:]   # Get n out of the string
-    e = bstr2int(e_str)          # Convert to int
-    n = bstr2int(n_str)          # Convert to int
+    en_arr = deserialize(bstr)
+    e = bstr2int(en_arr[0])          # Convert to int
+    n = bstr2int(en_arr[1])          # Convert to int
     return (e, n)
 
-# Encode a key into an int.
-# The format of the number is:
-#   First byte: length of e (in bytes)
-#   Followed by e
-#   Followed by n
+# Serialize a key into an int.
 def key_encode(e, n):
+    """Encode a key into an int"""
     e_str = int2bstr(e)
     n_str = int2bstr(n)
-    e_str_len = int2bstr(len(e_str))
-    return bstr2int(e_str_len + e_str + n_str)
+    return bstr2int(serialize([e_str, n_str]))
 
 
 # The modulus of the key is assumed to be larger than the data to be
