@@ -152,7 +152,7 @@ verify the signature and decrypt the message.
 
 First, Alice and Bob generate public and private keys using individually-chosen random prime
 numbers. Of course, they would actually do this on separate computers. They keep the private
-keys to themselves, but can publicly disclose the public keys.
+keys to themselves, but can disclose the public keys.
 
     >>> (a_pub, a_priv) = genkeys(97859, 112139)
     >>> (b_pub, b_priv) = genkeys(102481, 119359)
@@ -176,7 +176,7 @@ Next, she will sign the message using her private key.
 
 As a byte string, it won't paste into an email very well because
 it is not regular text. Alice could convert the byte string to an integer and send that.
-A more common technique is to convert it into a base-64 string.
+A more common technique, however, is to convert it into a base-64 string.
 
     >>> signed_b64 = to_base64(signed)
     >>> signed_b64
@@ -199,6 +199,6 @@ her public key.
 Next, extract the encrypted message from the string and decrypt it with his own private key, revealing the
 secret message.
 
-    >>> encrypted = deserialize(signed)[0]
+    >>> encrypted = deserialize(alice_msg)[0]
     >>> decrypt_str(encrypted, b_priv)
     b'Meet at Starbucks at 17:30'
