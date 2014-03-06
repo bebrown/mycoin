@@ -35,17 +35,25 @@ are actually prime. I choose p=97859 and q=112139.
 
     >>> (pub, priv) = genkeys(97859, 112139)
     >>> pub
-    55412290925652020961
+    1223111366094295328558817
     >>> priv
-    23399821377215036591841
+    315475364093914817328778977
     
-The keys contain the exponent and modulus concatenated together. The upper 8 bits (1 byte) of the number contains
-the length of the exponennt, in bytes.
+The keys contain the exponent and modulus serialized into an int.
+Each serialized item is prefixed with the length of the item (in bytes). The first byte of the serialization
+is how long each length header is.
 
     >>> hex(pub)
-    '0x3010001028e170ee1'
-    
-This shows that the exponent is 3 bytes long. The exponent is 0x010001 (65537) and the modulus is whatever is left over: 0x028e170ee1 (10973810401). The modulus is more than 32 bits long, so we're good.
+    '0x10301000105028e170ee1'
+
+
+Broken down:
+
+* 0x1 -> Each serialized item is prefixed with 1 byte that is the length of the item.
+* 0x03 -> The first item is 3 bytes long.
+* 0x010010 -> The exponent is 65537.
+* 0x05 -> The length of the next item is 5 bytes.
+* 0x028e170ee1 -> The modulus is 10973810401. It is more than 32 bits long, so we're good to encrypt data that is up to 32 bits.
 
 We can use key_decode to extract the components of the key:
 
@@ -54,7 +62,7 @@ We can use key_decode to extract the components of the key:
     >>> key_decode(priv)
     (4102144381, 10973810401)
     
-Now we can use our keys to encrypt and decrypt data. First we'll encrypt a blob of data. Since our modulus is a 33- or 34-bit number, we can encrypt data that is at most about 32 bits long. Let's encrypt the string b'Hi!'. (Reminder: in Python, b'foo' notation represents a byte string; that is, a three-byte string (or array) consisting of the ASCII values for 'f', 'o', and 'o'. Most of the functions in this library work on either byte strings or ints. Our encryption function works on ints, so we need to convert the bytestring to a number using bstr2int.
+Now we can use our keys to encrypt and decrypt data. First we'll encrypt a blob of data. Since our modulus is a 33- or 34-bit number, we can encrypt data that is at most about 32 bits long. Let's encrypt the string b'Hi!'. (Reminder: in Python, b'foo' notation represents a byte string; that is, a three-byte string (or array) consisting of the ASCII values for 'f', 'o', and 'o'.) Most of the functions in this library work on either byte strings or ints. Our encryption function works on ints, so we need to convert the bytestring to an int using bstr2int.
 
 Encrypt the string using the private key.
 
@@ -64,7 +72,7 @@ Encrypt the string using the private key.
     >>> encrypt(i, priv)
     2750689767
     
-Alternatively, just put it all together:
+Alternatively, just put it all together by nesting functions:
 
     >>> ciphertext = encrypt(bstr2int(b'Hi!'), priv)
     >>> ciphertext
@@ -79,7 +87,8 @@ Then decrypt it using the public key:
     b'Hi!'
 
 To encrypt a longer string, we have to break it up into chunks, encrypt each chunk separately, then concatenate
-the chunks together to form the encrypted string. The chunk size should be no larger than the number of bits needed to represent the modulus. For example, if our modulus is 34 bits, chunks should be shorter than 34 bits. The resulting encrypted value will be 34 bits long, though. This poses a small problem: in addition to the encrypted chunks, we'll need to send the receiver additional information about the chunk size so it can be decrypted correctly.
+the chunks together to form the encrypted string. The chunk size should be no larger than the number of bits needed to represent the modulus. For example, if our modulus is 34 bits, chunks should be shorter than 34 bits. The resulting encrypted value will be 34 bits long, though. This poses a small problem: in addition to the encrypted chunks, we'll need to send the receiver additional information about the chunk size so they can chop up the byte string
+appropriately.
 
 Our encrypted string will include this additional information in a header.
 
@@ -88,7 +97,7 @@ Our encrypted string will include this additional information in a header.
 * Byte 2: The encrypted value size (in bytes)
 * Byte 3: The length of the final chunk (in bytes)
 
-The rest of the encrypted data follows.
+The rest of the encrypted data follows the header.
 
     >>> s = b'This is a test.'
     >>> len(s)
