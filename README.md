@@ -196,8 +196,8 @@ her public key.
     >>> verify_signature(alice_msg, a_pub)
     True
     
-Next, extract the encrypted message from the string and decrypt it with his own private key, revealing the
-secret message.
+Finally, he will extract the encrypted message from the string and decrypt it with his own private key,
+revealing the secret message.
 
     >>> encrypted = deserialize(alice_msg)[0]
     >>> decrypt_str(encrypted, b_priv)
