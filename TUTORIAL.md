@@ -119,3 +119,62 @@ the sender's public key.
 
     >>> verify_signature(m, pub)
     True
+
+# A Complete Signature Example
+
+Alice wants to send Bob a secret message. She will encrypt it, sign it, and send it to Bob. Bob will
+verify the signature and decrypt the message.
+
+First, Alice and Bob generate public and private keys using individually-chosen random prime
+numbers. Of course, they would actually do this on separate computers. They keep the private
+keys to themselves, but can disclose the public keys.
+
+    >>> (a_pub, a_priv) = genkeys(97859, 112139)
+    >>> (b_pub, b_priv) = genkeys(102481, 119359)
+    >>> a_pub
+    1223111366094295328558817
+    >>> b_pub
+    1223111366094296586778095
+
+Since Alice wants Bob to view the message, she encrypts it using Bob's public key.
+
+    >>> msg = b'Meet at Starbucks at 17:30'
+    >>> encrypted_msg = encrypt_str(msg, b_pub)
+    >>> encrypted_msg
+    b'\x04\x04\x05\x02\x01`rc\xf2\x00\x97D\x97v\x02\x885\xd7#\x01\x9d\x8f;\x0c\x025\x82U\xb4\x00\x8e\xeas\xbe\x00\xa5M\xceY'
+
+Next, she will sign the message using her private key.
+
+    >>> signed = sign(encrypted_msg, a_priv)
+    >>> signed
+    b"\x01'\x04\x04\x05\x02\x01`rc\xf2\x00\x97D\x97v\x02\x885\xd7#\x01\x9d\x8f;\x0c\x025\x82U\xb4\x00\x8e\xeas\xbe\x00\xa5M\xceY\x18\x04\x04\x05\x00\x01E'\xdf\x07\x02]\xaf;{\x02..k\xb3\x00\x89\x94SK"
+
+As a byte string, it won't paste into an email very well because
+it is not regular text. Alice could convert the byte string to an integer and send that.
+A more common technique, however, is to convert it into a base-64 string.
+
+    >>> signed_b64 = to_base64(signed)
+    >>> signed_b64
+    b'AScEBAUCAWByY/IAl0SXdgKINdcjAZ2POwwCNYJVtACO6nO+AKVNzlkYBAQFAAFFJ98HAl2vO3sCLi5rswCJlFNL'
+    
+This is OK to send in an email to Bob.
+
+Upon receipt, Bob decodes the base64 string into a byte string.
+
+    >>> alice_msg = from_base64(b'AScEBAUCAWByY/IAl0SXdgKINdcjAZ2POwwCNYJVtACO6nO+AKVNzlkYBAQFAAFFJ98HAl2vO3sCLi5rswCJlFNL')
+    >>> alice_msg
+    b"\x01'\x04\x04\x05\x02\x01`rc\xf2\x00\x97D\x97v\x02\x885\xd7#\x01\x9d\x8f;\x0c\x025\x82U\xb4\x00\x8e\xeas\xbe\x00\xa5M\xceY\x18\x04\x04\x05\x00\x01E'\xdf\x07\x02]\xaf;{\x02..k\xb3\x00\x89\x94SK"
+    
+Then he should verify the signature on the message to ensure it came from Alice. He'll do this with
+her public key.
+
+    >>> verify_signature(alice_msg, a_pub)
+    True
+    
+Finally, he will extract the encrypted message from the string and decrypt it with his own private key,
+revealing the secret message.
+
+    >>> encrypted = deserialize(alice_msg)[0]
+    >>> decrypt_str(encrypted, b_priv)
+    b'Meet at Starbucks at 17:30'
+
