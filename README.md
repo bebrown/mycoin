@@ -26,3 +26,4 @@ to simulate the Bitcoin protocol.
 # Guides
 
 * [Tutorial](TUTORIAL.md)
+* [Reference](Reference.md)
