@@ -178,13 +178,13 @@ def encrypt_str(str, key):
         str = str.encode()
         
     # Calculate input chunk size, rounded down to nearest 8 bits
-    in_chunk_size = n.bit_length() // 8
+    in_chunk_size = max(n.bit_length() // 8, 1)
 
     # Calculate output chunk size, rounded up to nearest 8 bits
     out_chunk_size = n.bit_length() // 8 + 1
 
     # Put together the header
-    last_chunk_size = len(str) % in_chunk_size
+    last_chunk_size = len(str) % in_chunk_size + 1
     header = b'\x04' + int2bstr(in_chunk_size) + \
              int2bstr(out_chunk_size) + int2bstr(last_chunk_size)
 
@@ -282,6 +282,8 @@ def genkeys(p, q):
     """Return the public and private keys, encoded as ints"""
     e = 65537
     n = p * q
+    if n < 256:
+        print('Modulus must be greater than 255. Choose larger primes.')
     d = findd(e, phi(p, q))
     return (key_encode(e, n), key_encode(d, n))
 
